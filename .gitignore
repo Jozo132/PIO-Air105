@@ -1,0 +1,38 @@
+# Build outputs
+build/
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Toolchain artifacts
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.soc
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+*.egg
+
+# Logs
+*.log

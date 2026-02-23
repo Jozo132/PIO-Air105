@@ -1,0 +1,12 @@
+[submodule "vendor/luatos-soc-air105"]
+	path = vendor/luatos-soc-air105
+	url = https://github.com/openLuat/luatos-soc-air105.git
+[submodule "vendor/platformio-air105"]
+	path = vendor/platformio-air105
+	url = https://github.com/racerxdl/platformio-air105.git
+[submodule "vendor/air105-uploader"]
+	path = vendor/air105-uploader
+	url = https://github.com/racerxdl/air105-uploader.git
+[submodule "vendor/mhdumper"]
+	path = vendor/mhdumper
+	url = https://github.com/racerxdl/mhdumper.git

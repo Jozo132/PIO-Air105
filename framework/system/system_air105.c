@@ -63,15 +63,22 @@ void SystemInit(void)
     /*
      * Configure PLL:
      *  - 0x20000000 : required undocumented bit (from vendor reference)
+     *  - (1 << 13)  : PLL enable/stabilize bit (from vendor reference)
      *  - XTAL_204Mhz: PLL = 12 * 17 = 204 MHz
      *  - CLOCK_SOURCE_INC: use internal 12 MHz oscillator
+     *  - PLL_DIV_1_0: No PLL output division (bits 8-9 = 0)
      *  - HCLK_DIV_1_2: HCLK = PLL / 2 = 102 MHz
      *  - PCLK_DIV_1_2: PCLK = HCLK / 2 = 51 MHz (bit 0 = 0)
      */
     SYSCTRL->FREQ_SEL = 0x20000000
+                       | (1 << 13)   /* PLL enable bit from vendor */
                        | SYSCTRL_FREQ_SEL_XTAL_204Mhz
                        | SYSCTRL_FREQ_SEL_CLOCK_SOURCE_INC
+                       | SYSCTRL_FREQ_SEL_PLL_DIV_1_0
                        | SYSCTRL_FREQ_SEL_HCLK_DIV_1_2;
+
+    /* Wait for PLL to stabilize */
+    for (volatile int i = 0; i < 10000; i++) {}
 
     /* Enable FPU (CP10 + CP11 full access) */
 #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
@@ -107,10 +114,11 @@ void SysTick_Handler(void)
 /**
  * @brief Configure SysTick for 1 ms interrupts
  *
- * SysTick runs at HCLK = SystemCoreClock / 2.
+ * SysTick runs at processor clock (FCLK = PLL frequency on Cortex-M4).
+ * The HCLK divider only affects the AHB bus, not the core clock.
  * Called from init() in the Arduino core before setup().
  */
 void SysTick_Init(void)
 {
-    SysTick_Config(SystemCoreClock / 2 / 1000);
+    SysTick_Config(SystemCoreClock / 1000);
 }

@@ -78,6 +78,12 @@ typedef uint16_t word;
     ((bitvalue) ? bitSet(value, bit) : bitClear(value, bit))
 #define bit(b) (1UL << (b))
 
+/* ---- Flash string helper (on ARM, just a pass-through) ---- */
+#ifdef __cplusplus
+class __FlashStringHelper;
+#define F(string_literal) (reinterpret_cast<const __FlashStringHelper *>(string_literal))
+#endif
+
 /* ---- Timing ---- */
 unsigned long millis(void);
 unsigned long micros(void);

@@ -23,6 +23,12 @@ size_t Print::write(const uint8_t *buffer, size_t size)
 
 /* ---- print() implementations ---- */
 
+/* On ARM, flash strings are directly accessible like regular strings */
+size_t Print::print(const __FlashStringHelper *ifsh)
+{
+    return print(reinterpret_cast<const char *>(ifsh));
+}
+
 size_t Print::print(const char str[])
 {
     return write(str);
@@ -85,6 +91,13 @@ size_t Print::print(const Printable &x)
 size_t Print::println(void)
 {
     return write("\r\n");
+}
+
+size_t Print::println(const __FlashStringHelper *ifsh)
+{
+    size_t n = print(ifsh);
+    n += println();
+    return n;
 }
 
 size_t Print::println(const char c[])

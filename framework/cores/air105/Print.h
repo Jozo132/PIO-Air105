@@ -18,6 +18,9 @@
 #define OCT 8
 #define BIN 2
 
+/* Forward declaration for flash string helper */
+class __FlashStringHelper;
+
 class Print {
 public:
     Print() : write_error(0) {}
@@ -39,6 +42,7 @@ public:
     }
 
     /* ---- print() family ---- */
+    size_t print(const __FlashStringHelper *);
     size_t print(const char[]);
     size_t print(char);
     size_t print(unsigned char, int = DEC);
@@ -50,6 +54,7 @@ public:
     size_t print(const Printable &);
 
     /* ---- println() family ---- */
+    size_t println(const __FlashStringHelper *);
     size_t println(const char[]);
     size_t println(char);
     size_t println(unsigned char, int = DEC);

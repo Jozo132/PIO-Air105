@@ -1,0 +1,25 @@
+{
+  "build": {
+    "core": "air105",
+    "cpu": "cortex-m4",
+    "extra_flags": "-DAIR105 -DARM_MATH_CM4 -D__FPU_PRESENT=1 -D__FPU_USED=1",
+    "f_cpu": "204000000L",
+    "mcu": "air105",
+    "variant": "air105_devboard"
+  },
+  "debug": {
+    "jlink_device": "Cortex-M4",
+    "openocd_target": "air105"
+  },
+  "frameworks": ["arduino"],
+  "name": "Air105 Core Board",
+  "upload": {
+    "maximum_ram_size": 655360,
+    "maximum_size": 4190208,
+    "protocol": "air105-dfu",
+    "require_upload_port": true,
+    "speed": 921600
+  },
+  "url": "https://wiki.luatos.com/chips/air105/index.html",
+  "vendor": "LuatOS"
+}

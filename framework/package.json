@@ -1,0 +1,12 @@
+{
+  "name": "framework-arduino-air105",
+  "version": "0.1.0",
+  "description": "Arduino-compatible framework for Air105 (MH1903S) Cortex-M4F MCU",
+  "keywords": ["framework", "arduino", "air105", "mh1903s", "cortex-m4"],
+  "author": "J.Vovk <Jozo132@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jozo132/PIO-Air105"
+  }
+}

@@ -148,6 +148,7 @@ void yield(void);
 #include "HardwareTimer.h"
 #include "Wire.h"
 #include "SPI.h"
+#include "DMA.h"
 
 /* min/max as templates to avoid macro pitfalls in C++ */
 #undef min

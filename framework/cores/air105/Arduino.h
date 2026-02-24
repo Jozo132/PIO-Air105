@@ -95,10 +95,16 @@ void pinMode(uint8_t pin, uint8_t mode);
 void digitalWrite(uint8_t pin, uint8_t val);
 int  digitalRead(uint8_t pin);
 
-/* ---- Analog I/O (stubs for Phase 1) ---- */
+/* ---- Analog I/O ---- */
 int  analogRead(uint8_t pin);
 void analogWrite(uint8_t pin, int val);
 void analogReference(uint8_t type);
+int  analogReadVBAT(void);  /* Air105-specific: read battery voltage in mV */
+
+/* Analog reference types */
+#define DEFAULT    0
+#define INTERNAL   1   /* Air105: enables internal 2:1 divider for 0-3.6V range */
+#define EXTERNAL   2
 
 /* ---- Interrupts ---- */
 void attachInterrupt(uint8_t interruptNum, void (*userFunc)(void), int mode);

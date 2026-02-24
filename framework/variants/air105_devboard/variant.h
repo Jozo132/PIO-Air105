@@ -61,14 +61,21 @@ extern "C" {
 #define SCL               PIN_WIRE_SCL
 
 /* ---- ADC pins ---- */
-#define A0  (2 * 16 + 0)  /* PC0 — ADC channel 0 */
-#define A1  (2 * 16 + 1)  /* PC1 — ADC channel 1 */
-#define A2  (2 * 16 + 2)  /* PC2 — ADC channel 2 */
-#define A3  (2 * 16 + 4)  /* PC4 — ADC channel 3 */
-#define A4  (2 * 16 + 5)  /* PC5 — ADC channel 4 */
-#define A5  (2 * 16 + 6)  /* PC6 — ADC channel 5 */
-#define A6  (2 * 16 + 7)  /* PC7 — ADC channel 6 */
-#define A7  (2 * 16 + 8)  /* PC8 — ADC channel 7 */
+/*
+ * Air105 ADC channel mapping:
+ *   - Channel 0: VBAT (internal, use analogReadVBAT())
+ *   - Channel 1: PC0 (A0)
+ *   - Channel 2: PC1 (A1)
+ *   - Channel 3: Not available
+ *   - Channel 4: PC3 (A2)
+ *   - Channel 5: PC4 (A3)
+ *   - Channel 6: PC5 (A4)
+ */
+#define A0  (2 * 16 + 0)  /* PC0 — ADC channel 1 */
+#define A1  (2 * 16 + 1)  /* PC1 — ADC channel 2 */
+#define A2  (2 * 16 + 3)  /* PC3 — ADC channel 4 (channel 3 not available) */
+#define A3  (2 * 16 + 4)  /* PC4 — ADC channel 5 */
+#define A4  (2 * 16 + 5)  /* PC5 — ADC channel 6 */
 
 /* ---- User button ---- */
 #define USER_BUTTON       (0 * 16 + 10)    /* PA10 — adjust per board */

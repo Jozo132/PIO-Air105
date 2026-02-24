@@ -1,6 +1,7 @@
 /**
  * @file WInterrupts.c
  * @brief Arduino external interrupt API — attachInterrupt / detachInterrupt
+ *        STM32duino-compatible API
  * @author J.Vovk <Jozo132@gmail.com>
  * @url https://github.com/Jozo132/PIO-Air105
  *
@@ -16,13 +17,22 @@
 /* Callback table: one per possible GPIO pin (96 max) */
 static void (*_gpio_isr[NUM_DIGITAL_PINS])(void);
 
+/* Mode tracking for CHANGE mode (need to toggle edge direction) */
+static uint8_t _gpio_mode[NUM_DIGITAL_PINS];
+
 /* IRQn for EXTI port 0-5 */
 static const IRQn_Type exti_irqn[6] = {
     EXTI0_IRQn, EXTI1_IRQn, EXTI2_IRQn,
     EXTI3_IRQn, EXTI4_IRQn, EXTI5_IRQn
 };
 
-void attachInterrupt(uint8_t pin, void (*userFunc)(void), int mode)
+/**
+ * Attach an interrupt to a GPIO pin (STM32duino-compatible)
+ * @param pin GPIO pin number (0-95)
+ * @param userFunc Callback function
+ * @param mode RISING, FALLING, or CHANGE
+ */
+void attachInterrupt(uint32_t pin, void (*userFunc)(void), uint32_t mode)
 {
     if (pin >= NUM_DIGITAL_PINS || userFunc == NULL) return;
 
@@ -30,31 +40,38 @@ void attachInterrupt(uint8_t pin, void (*userFunc)(void), int mode)
     uint8_t bit  = pin & 0x0F;
 
     _gpio_isr[pin] = userFunc;
+    _gpio_mode[pin] = (uint8_t)mode;
 
-    /* Configure interrupt type: 2 bits per pin in INTP_TYPE_STA[port] */
+    /* Configure interrupt type: 2 bits per pin in INTP_TYPE_STA[port] 
+     * Hardware values: 00=high level, 01=low level, 10=rising, 11=falling
+     * STM32duino: RISING=4, FALLING=3, CHANGE=2
+     */
     uint32_t type_val;
     switch (mode) {
-        case RISING:  type_val = 0x02; break;
-        case FALLING: type_val = 0x03; break;
-        case CHANGE:  type_val = 0x02; break; /* rising; TODO: emulate CHANGE */
-        default:      type_val = 0x03; break;
+        case RISING:  type_val = 0x02; break;  /* 10 = rising edge */
+        case FALLING: type_val = 0x03; break;  /* 11 = falling edge */
+        case CHANGE:  type_val = 0x02; break;  /* Start with rising, toggle in ISR */
+        default:      type_val = 0x03; break;  /* Default to falling */
     }
 
     uint32_t shift = bit * 2;
-    GPIO_MODULE_TypeDef *gpio_mod = (GPIO_MODULE_TypeDef *)GPIO_BASE;
-    gpio_mod->INTP_TYPE_STA[port].INTP_TYPE =
-        (gpio_mod->INTP_TYPE_STA[port].INTP_TYPE & ~(3UL << shift))
+    GPIO->INTP_TYPE_STA[port].INTP_TYPE =
+        (GPIO->INTP_TYPE_STA[port].INTP_TYPE & ~(3UL << shift))
         | (type_val << shift);
 
     /* Clear any pending interrupt for this pin */
-    gpio_mod->INTP_TYPE_STA[port].INTP_STA = (1UL << bit);
+    GPIO->INTP_TYPE_STA[port].INTP_STA = (1UL << bit);
 
     /* Enable NVIC for this port's EXTI IRQ */
     NVIC_SetPriority(exti_irqn[port], 3);
     NVIC_EnableIRQ(exti_irqn[port]);
 }
 
-void detachInterrupt(uint8_t pin)
+/**
+ * Detach interrupt from a GPIO pin
+ * @param pin GPIO pin number (0-95)
+ */
+void detachInterrupt(uint32_t pin)
 {
     if (pin >= NUM_DIGITAL_PINS) return;
 
@@ -63,10 +80,10 @@ void detachInterrupt(uint8_t pin)
 
     /* Disable this pin's interrupt type bits → 0 */
     uint32_t shift = bit * 2;
-    GPIO_MODULE_TypeDef *gpio_mod = (GPIO_MODULE_TypeDef *)GPIO_BASE;
-    gpio_mod->INTP_TYPE_STA[port].INTP_TYPE &= ~(3UL << shift);
+    GPIO->INTP_TYPE_STA[port].INTP_TYPE &= ~(3UL << shift);
 
     _gpio_isr[pin] = NULL;
+    _gpio_mode[pin] = 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -74,16 +91,25 @@ void detachInterrupt(uint8_t pin)
 /* ------------------------------------------------------------------ */
 static void exti_handler(uint8_t port)
 {
-    GPIO_MODULE_TypeDef *gpio_mod = (GPIO_MODULE_TypeDef *)GPIO_BASE;
-    uint32_t status = gpio_mod->INTP_TYPE_STA[port].INTP_STA;
+    uint32_t status = GPIO->INTP_TYPE_STA[port].INTP_STA;
     /* Clear all pending bits */
-    gpio_mod->INTP_TYPE_STA[port].INTP_STA = status;
+    GPIO->INTP_TYPE_STA[port].INTP_STA = status;
 
     uint8_t base = port << 4;
     for (uint8_t bit = 0; bit < 16 && status; bit++) {
         if (status & (1UL << bit)) {
             uint8_t pin = base + bit;
             if (pin < NUM_DIGITAL_PINS && _gpio_isr[pin]) {
+                /* For CHANGE mode, toggle edge direction after each interrupt */
+                if (_gpio_mode[pin] == CHANGE) {
+                    uint32_t shift = bit * 2;
+                    uint32_t cur_type = (GPIO->INTP_TYPE_STA[port].INTP_TYPE >> shift) & 0x03;
+                    /* Toggle between rising (10) and falling (11) */
+                    uint32_t new_type = (cur_type == 0x02) ? 0x03 : 0x02;
+                    GPIO->INTP_TYPE_STA[port].INTP_TYPE = 
+                        (GPIO->INTP_TYPE_STA[port].INTP_TYPE & ~(3UL << shift))
+                        | (new_type << shift);
+                }
                 _gpio_isr[pin]();
             }
             status &= ~(1UL << bit);

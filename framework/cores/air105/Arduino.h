@@ -41,10 +41,10 @@ typedef uint16_t word;
 #define OUTPUT         0x1
 #define INPUT_PULLUP   0x2
 
-/* ---- Interrupt modes ---- */
-#define CHANGE   0x04
+/* ---- Interrupt modes (STM32duino-compatible values) ---- */
+#define CHANGE   0x02
 #define FALLING  0x03
-#define RISING   0x02
+#define RISING   0x04
 
 /* ---- Analog reference (placeholder — Air105 has fixed 1.8 V range) ---- */
 #define DEFAULT  0
@@ -108,10 +108,11 @@ void analogWriteResolution(uint8_t bits);   /* Set PWM resolution (default 8-bit
 #define INTERNAL   1   /* Air105: enables internal 2:1 divider for 0-3.6V range */
 #define EXTERNAL   2
 
-/* ---- Interrupts ---- */
-void attachInterrupt(uint8_t interruptNum, void (*userFunc)(void), int mode);
-void detachInterrupt(uint8_t interruptNum);
+/* ---- GPIO Interrupts (STM32duino-compatible API) ---- */
+void attachInterrupt(uint32_t pin, void (*userFunc)(void), uint32_t mode);
+void detachInterrupt(uint32_t pin);
 #define digitalPinToInterrupt(p) (p)   /* Air105: every GPIO can interrupt */
+#define NOT_AN_INTERRUPT ((uint32_t)-1)
 
 #define interrupts()    __enable_irq()
 #define noInterrupts()  __disable_irq()

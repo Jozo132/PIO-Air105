@@ -1,9 +1,9 @@
 /**
- * PIO-Air105 — Timer Interrupt Blink Test (STM32duino-compatible API)
+ * PIO-Air105 — Timer Interrupt Test (STM32duino-compatible API)
  * 
- * Demonstrates HardwareTimer class:
- *   - TIM6: Blinks RED LED using MICROSEC_FORMAT (500ms = 500000us)
- *   - TIM7: Blinks GREEN LED using HERTZ_FORMAT (2 Hz)
+ * Demonstrates:
+ *   - HardwareTimer: TIM6 blinks RED (500ms), TIM7 blinks GREEN (2Hz)
+ *   - Note: CORE-Air105-V1.0 board has no user button, only BOOT/RESET
  */
 
 #include <Arduino.h>
@@ -29,6 +29,7 @@ void blinkGreen() {
 void setup() {
     pinMode(LED_BUILTIN_RED, OUTPUT);
     pinMode(LED_BUILTIN_GREEN, OUTPUT);
+    pinMode(LED_BUILTIN_BLUE, OUTPUT);
     
     /* Timer 6: Blink RED at 1Hz (toggle every 500ms) */
     timer6.setOverflow(500000, MICROSEC_FORMAT);
@@ -42,5 +43,5 @@ void setup() {
 }
 
 void loop() {
-    /* LEDs are controlled by timer interrupts - nothing to do here */
+    /* All LEDs controlled by interrupts - nothing to do here */
 }

@@ -43,15 +43,15 @@ void attachInterrupt(uint32_t pin, void (*userFunc)(void), uint32_t mode)
     _gpio_mode[pin] = (uint8_t)mode;
 
     /* Configure interrupt type: 2 bits per pin in INTP_TYPE_STA[port] 
-     * Hardware values: 00=high level, 01=low level, 10=rising, 11=falling
+     * Hardware values: 00=disabled, 01=rising edge, 10=falling edge, 11=both edges
      * STM32duino: RISING=4, FALLING=3, CHANGE=2
      */
     uint32_t type_val;
     switch (mode) {
-        case RISING:  type_val = 0x02; break;  /* 10 = rising edge */
-        case FALLING: type_val = 0x03; break;  /* 11 = falling edge */
-        case CHANGE:  type_val = 0x02; break;  /* Start with rising, toggle in ISR */
-        default:      type_val = 0x03; break;  /* Default to falling */
+        case RISING:  type_val = 0x01; break;  /* 01 = rising edge */
+        case FALLING: type_val = 0x02; break;  /* 10 = falling edge */
+        case CHANGE:  type_val = 0x03; break;  /* 11 = both edges */
+        default:      type_val = 0x02; break;  /* Default to falling */
     }
 
     uint32_t shift = bit * 2;
@@ -61,6 +61,15 @@ void attachInterrupt(uint32_t pin, void (*userFunc)(void), uint32_t mode)
 
     /* Clear any pending interrupt for this pin */
     GPIO->INTP_TYPE_STA[port].INTP_STA = (1UL << bit);
+
+    /* Enable interrupt in WAKEx_EN register (required for EXTI to work) */
+    uint32_t wake_sn = pin / 32;
+    uint32_t wake_pos = 1UL << (pin % 32);
+    switch (wake_sn) {
+        case 0: GPIO->WAKE_P0_EN |= wake_pos; break;
+        case 1: GPIO->WAKE_P1_EN |= wake_pos; break;
+        case 2: GPIO->WAKE_P2_EN |= wake_pos; break;
+    }
 
     /* Enable NVIC for this port's EXTI IRQ */
     NVIC_SetPriority(exti_irqn[port], 3);
@@ -82,6 +91,15 @@ void detachInterrupt(uint32_t pin)
     uint32_t shift = bit * 2;
     GPIO->INTP_TYPE_STA[port].INTP_TYPE &= ~(3UL << shift);
 
+    /* Disable interrupt in WAKEx_EN register */
+    uint32_t wake_sn = pin / 32;
+    uint32_t wake_pos = 1UL << (pin % 32);
+    switch (wake_sn) {
+        case 0: GPIO->WAKE_P0_EN &= ~wake_pos; break;
+        case 1: GPIO->WAKE_P1_EN &= ~wake_pos; break;
+        case 2: GPIO->WAKE_P2_EN &= ~wake_pos; break;
+    }
+
     _gpio_isr[pin] = NULL;
     _gpio_mode[pin] = 0;
 }
@@ -100,16 +118,7 @@ static void exti_handler(uint8_t port)
         if (status & (1UL << bit)) {
             uint8_t pin = base + bit;
             if (pin < NUM_DIGITAL_PINS && _gpio_isr[pin]) {
-                /* For CHANGE mode, toggle edge direction after each interrupt */
-                if (_gpio_mode[pin] == CHANGE) {
-                    uint32_t shift = bit * 2;
-                    uint32_t cur_type = (GPIO->INTP_TYPE_STA[port].INTP_TYPE >> shift) & 0x03;
-                    /* Toggle between rising (10) and falling (11) */
-                    uint32_t new_type = (cur_type == 0x02) ? 0x03 : 0x02;
-                    GPIO->INTP_TYPE_STA[port].INTP_TYPE = 
-                        (GPIO->INTP_TYPE_STA[port].INTP_TYPE & ~(3UL << shift))
-                        | (new_type << shift);
-                }
+                /* CHANGE mode uses hardware both-edges (0x03), no toggle needed */
                 _gpio_isr[pin]();
             }
             status &= ~(1UL << bit);

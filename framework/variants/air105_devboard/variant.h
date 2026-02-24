@@ -101,7 +101,118 @@ extern "C" {
 #define PWM5  (2 * 16 + 7)  /* PC7 — PWM channel 5 */
 
 /* ---- User button ---- */
-#define USER_BUTTON       (0 * 16 + 10)    /* PA10 — adjust per board */
+/* Note: CORE-Air105-V1.0 has no user button, only BOOT/RESET buttons */
+/* USER_BUTTON definition is for boards that have one - adjust per board */
+// #define USER_BUTTON       (0 * 16 + 10)    /* PA10 — uncomment and adjust per board */
+
+/* ---- STM32duino-compatible pin names ---- */
+/* Port A: PA0-PA15 */
+#define PA0   (0 * 16 + 0)
+#define PA1   (0 * 16 + 1)
+#define PA2   (0 * 16 + 2)
+#define PA3   (0 * 16 + 3)
+#define PA4   (0 * 16 + 4)
+#define PA5   (0 * 16 + 5)
+#define PA6   (0 * 16 + 6)
+#define PA7   (0 * 16 + 7)
+#define PA8   (0 * 16 + 8)
+#define PA9   (0 * 16 + 9)
+#define PA10  (0 * 16 + 10)
+#define PA11  (0 * 16 + 11)
+#define PA12  (0 * 16 + 12)
+#define PA13  (0 * 16 + 13)
+#define PA14  (0 * 16 + 14)
+#define PA15  (0 * 16 + 15)
+
+/* Port B: PB0-PB15 */
+#define PB0   (1 * 16 + 0)
+#define PB1   (1 * 16 + 1)
+#define PB2   (1 * 16 + 2)
+#define PB3   (1 * 16 + 3)
+#define PB4   (1 * 16 + 4)
+#define PB5   (1 * 16 + 5)
+#define PB6   (1 * 16 + 6)
+#define PB7   (1 * 16 + 7)
+#define PB8   (1 * 16 + 8)
+#define PB9   (1 * 16 + 9)
+#define PB10  (1 * 16 + 10)
+#define PB11  (1 * 16 + 11)
+#define PB12  (1 * 16 + 12)
+#define PB13  (1 * 16 + 13)
+#define PB14  (1 * 16 + 14)
+#define PB15  (1 * 16 + 15)
+
+/* Port C: PC0-PC15 */
+#define PC0   (2 * 16 + 0)
+#define PC1   (2 * 16 + 1)
+#define PC2   (2 * 16 + 2)
+#define PC3   (2 * 16 + 3)
+#define PC4   (2 * 16 + 4)
+#define PC5   (2 * 16 + 5)
+#define PC6   (2 * 16 + 6)
+#define PC7   (2 * 16 + 7)
+#define PC8   (2 * 16 + 8)
+#define PC9   (2 * 16 + 9)
+#define PC10  (2 * 16 + 10)
+#define PC11  (2 * 16 + 11)
+#define PC12  (2 * 16 + 12)
+#define PC13  (2 * 16 + 13)
+#define PC14  (2 * 16 + 14)
+#define PC15  (2 * 16 + 15)
+
+/* Port D: PD0-PD15 */
+#define PD0   (3 * 16 + 0)
+#define PD1   (3 * 16 + 1)
+#define PD2   (3 * 16 + 2)
+#define PD3   (3 * 16 + 3)
+#define PD4   (3 * 16 + 4)
+#define PD5   (3 * 16 + 5)
+#define PD6   (3 * 16 + 6)
+#define PD7   (3 * 16 + 7)
+#define PD8   (3 * 16 + 8)
+#define PD9   (3 * 16 + 9)
+#define PD10  (3 * 16 + 10)
+#define PD11  (3 * 16 + 11)
+#define PD12  (3 * 16 + 12)
+#define PD13  (3 * 16 + 13)
+#define PD14  (3 * 16 + 14)
+#define PD15  (3 * 16 + 15)
+
+/* Port E: PE0-PE15 */
+#define PE0   (4 * 16 + 0)
+#define PE1   (4 * 16 + 1)
+#define PE2   (4 * 16 + 2)
+#define PE3   (4 * 16 + 3)
+#define PE4   (4 * 16 + 4)
+#define PE5   (4 * 16 + 5)
+#define PE6   (4 * 16 + 6)
+#define PE7   (4 * 16 + 7)
+#define PE8   (4 * 16 + 8)
+#define PE9   (4 * 16 + 9)
+#define PE10  (4 * 16 + 10)
+#define PE11  (4 * 16 + 11)
+#define PE12  (4 * 16 + 12)
+#define PE13  (4 * 16 + 13)
+#define PE14  (4 * 16 + 14)
+#define PE15  (4 * 16 + 15)
+
+/* Port F: PF0-PF15 */
+#define PF0   (5 * 16 + 0)
+#define PF1   (5 * 16 + 1)
+#define PF2   (5 * 16 + 2)
+#define PF3   (5 * 16 + 3)
+#define PF4   (5 * 16 + 4)
+#define PF5   (5 * 16 + 5)
+#define PF6   (5 * 16 + 6)
+#define PF7   (5 * 16 + 7)
+#define PF8   (5 * 16 + 8)
+#define PF9   (5 * 16 + 9)
+#define PF10  (5 * 16 + 10)
+#define PF11  (5 * 16 + 11)
+#define PF12  (5 * 16 + 12)
+#define PF13  (5 * 16 + 13)
+#define PF14  (5 * 16 + 14)
+#define PF15  (5 * 16 + 15)
 
 #ifdef __cplusplus
 }

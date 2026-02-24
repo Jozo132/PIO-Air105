@@ -146,6 +146,7 @@ void yield(void);
 #include "Stream.h"
 #include "HardwareSerial.h"
 #include "HardwareTimer.h"
+#include "Wire.h"
 
 /* min/max as templates to avoid macro pitfalls in C++ */
 #undef min

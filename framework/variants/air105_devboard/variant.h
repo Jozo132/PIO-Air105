@@ -61,8 +61,11 @@ extern "C" {
 #define SCK               PIN_SPI_SCK
 
 /* ---- I2C pins (I2C0 = default) ---- */
-#define PIN_WIRE_SDA      (1 * 16 + 6)     /* PB6 */
-#define PIN_WIRE_SCL      (1 * 16 + 7)     /* PB7 */
+/* NOTE: I2C0 shares PE6/PE7 with UART1 (Serial).
+ *       You cannot use Wire and Serial simultaneously.
+ *       Use Serial0, Serial2, or Serial3 instead when using I2C. */
+#define PIN_WIRE_SDA      (4 * 16 + 6)     /* PE6 (AF2) */
+#define PIN_WIRE_SCL      (4 * 16 + 7)     /* PE7 (AF2) */
 #define SDA               PIN_WIRE_SDA
 #define SCL               PIN_WIRE_SCL
 

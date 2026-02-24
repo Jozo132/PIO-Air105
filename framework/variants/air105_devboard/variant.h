@@ -32,13 +32,14 @@ extern "C" {
 /*
  * LED pins on common Air105 dev boards:
  *   PD14 = Green LED
- *   PD15 = Blue LED
+ *   PD14 = Blue LED
+ *   PD15 = Green LED
  *   PC3  = Red LED (active low on some boards)
  */
-#define LED_BUILTIN         (3 * 16 + 14)   /* PD14 = pin 62, default LED (green) */
-#define LED_BUILTIN_GREEN   LED_BUILTIN     /* PD14 = pin 62 */
-#define LED_BUILTIN_BLUE    (3 * 16 + 15)   /* PD15 = pin 63 */
-#define LED_BUILTIN_RED     (2 * 16 + 3)    /* PC3  = pin 35 */
+#define LED_BUILTIN         (2 * 16 + 3)    /* PC3  = pin 35, default LED (red) */
+#define LED_BUILTIN_RED     LED_BUILTIN     /* PC3  = pin 35 */
+#define LED_BUILTIN_GREEN   (3 * 16 + 15)   /* PD15 = pin 63 */
+#define LED_BUILTIN_BLUE    (3 * 16 + 14)   /* PD14 = pin 62 */
 
 /* Legacy aliases */
 #define LED_GREEN           LED_BUILTIN_GREEN

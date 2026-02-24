@@ -50,11 +50,18 @@ extern "C" {
 #define PIN_SERIAL_TX     (4 * 16 + 6)     /* PE6 */
 #define PIN_SERIAL_RX     (4 * 16 + 7)     /* PE7 */
 
-/* ---- SPI pins (SPI0 = default) ---- */
+/* ---- SPI pins (SPI2 = default, SPIM2 peripheral) ---- */
+/*
+ * SPI2 pin assignments (AF0):
+ *   PB2  = SCK   (clock)
+ *   PB3  = SS/CS (chip select — GPIO-managed by user)
+ *   PB4  = MOSI  (master out, slave in)
+ *   PB5  = MISO  (master in, slave out)
+ */
 #define PIN_SPI_SCK       (1 * 16 + 2)     /* PB2 */
-#define PIN_SPI_MISO      (1 * 16 + 4)     /* PB4 */
-#define PIN_SPI_MOSI      (1 * 16 + 3)     /* PB3 */
-#define PIN_SPI_SS        (1 * 16 + 5)     /* PB5 */
+#define PIN_SPI_MOSI      (1 * 16 + 4)     /* PB4 */
+#define PIN_SPI_MISO      (1 * 16 + 5)     /* PB5 */
+#define PIN_SPI_SS        (1 * 16 + 3)     /* PB3 */
 #define SS                PIN_SPI_SS
 #define MOSI              PIN_SPI_MOSI
 #define MISO              PIN_SPI_MISO

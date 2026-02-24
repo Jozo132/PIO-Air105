@@ -40,36 +40,43 @@ void HardwareSerial::begin(unsigned long baud, uint8_t config)
 {
     _begun = true;
 
+    /* Determine UART ID for peripheral reset (UART0=0, UART1=1, etc.) */
+    uint8_t uartId = 0;
+    if (_uart == UART0) uartId = 0;
+    else if (_uart == UART1) uartId = 1;
+    else if (_uart == UART2) uartId = 2;
+    else if (_uart == UART3) uartId = 3;
+
     /* Configure GPIO pins for this UART */
     _configurePins();
 
-    /* Reset UART */
-    _uart->SRR = UART_SRR_UR | UART_SRR_RFR | UART_SRR_XFR;
+    /* Peripheral soft reset via SYSCTRL (vendor method) */
+    SYSCTRL->SOFT_RST1 = (1 << uartId);
+    while (SYSCTRL->SOFT_RST1 & (1 << uartId)) {}
 
-    /* Wait for reset to complete */
-    while (_uart->USR & UART_USR_BUSY) {}
-
-    /* Set baud rate: divisor = (SystemCoreClock >> 6) / baud */
+    /* Set baud rate: divisor = (SystemCoreClock >> 6) / baud
+     * Clock chain: PLL(204M) -> HCLK(102M) -> PCLK(51M) -> UART/16 = 3.1875M
+     * SystemCoreClock >> 6 accounts for these divisions
+     */
     uint32_t divisor = (SystemCoreClock >> 6) / baud;
     if (divisor == 0) divisor = 1;
 
-    _uart->LCR = UART_LCR_DLAB;       /* Enable divisor latch access */
-    _uart->OFFSET_0.DLL = divisor & 0xFF;
-    _uart->OFFSET_4.DLH = (divisor >> 8) & 0xFF;
-    _uart->LCR = 0;                   /* Disable DLAB */
+    _uart->LCR |= UART_LCR_DLAB;      /* Enable divisor latch access */
+    _uart->OFFSET_0.DLL = (divisor & 0xFF);
+    _uart->OFFSET_4.DLH = ((divisor >> 8) & 0xFF);
+    _uart->LCR &= ~UART_LCR_DLAB;     /* Disable DLAB */
 
     /* Set line control: data bits, parity, stop bits */
     _uart->LCR = config & 0x3F;       /* bits [5:0] of LCR */
 
-    /* Enable and reset FIFOs, set RX trigger to 1 char */
+    /* Enable and reset FIFOs */
     _uart->OFFSET_8.FCR = UART_FCR_FIFOE | UART_FCR_RFIFOR | UART_FCR_XFIFOR;
 
-    /* Enable RX interrupt */
-    _uart->OFFSET_4.IER = UART_IER_ERBFI | UART_IER_ELSI;
-
-    /* Enable NVIC */
-    NVIC_SetPriority(_irqn, 2);
-    NVIC_EnableIRQ(_irqn);
+    /* Disable ALL interrupts - TX-only polling mode for now */
+    _uart->OFFSET_4.IER = 0;
+    
+    /* Do NOT enable NVIC - no interrupts used */
+    NVIC_DisableIRQ(_irqn);
 }
 
 void HardwareSerial::end()
@@ -127,19 +134,43 @@ size_t HardwareSerial::write(const uint8_t *buffer, size_t size)
 /* ---- RX interrupt handler (called from UART IRQ) ---- */
 void HardwareSerial::_rx_isr_handler()
 {
-    uint32_t iir = _uart->OFFSET_8.IIR & 0x0F;
-
-    /* Process receive data available or character timeout */
-    if (iir == 0x04 || iir == 0x0C) {
-        while (_uart->USR & UART_USR_RFNE) {
-            uint8_t c = (uint8_t)_uart->OFFSET_0.RBR;
-            _rxBuf.store(c);
-        }
+    /* Always read LSR first to clear any error conditions */
+    volatile uint32_t lsr = _uart->LSR;
+    (void)lsr;
+    
+    /* Read IIR - this clears some interrupt sources */
+    uint32_t iir = _uart->OFFSET_8.IIR;
+    
+    /* Check if interrupt is pending (bit 0 = 0 means interrupt pending) */
+    if (iir & 0x01) {
+        return;  /* No interrupt pending */
     }
-
-    /* Line status error — read LSR to clear */
-    if (iir == 0x06) {
-        (void)_uart->LSR;
+    
+    uint32_t int_id = (iir >> 1) & 0x07;
+    
+    switch (int_id) {
+        case 0:  /* Modem status - read MSR to clear */
+            (void)_uart->MSR;
+            break;
+            
+        case 1:  /* TX holding register empty - ignore, we poll for TX */
+            break;
+            
+        case 2:  /* Received data available */
+        case 6:  /* Character timeout */
+            while (_uart->USR & UART_USR_RFNE) {
+                uint8_t c = (uint8_t)_uart->OFFSET_0.RBR;
+                _rxBuf.store(c);
+            }
+            break;
+            
+        case 3:  /* Receiver line status (error) - already cleared by LSR read above */
+            break;
+            
+        default:
+            /* Unknown interrupt - read MSR to clear any pending */
+            (void)_uart->MSR;
+            break;
     }
 }
 
@@ -148,41 +179,49 @@ void HardwareSerial::_configurePins()
 {
     /*
      * GPIO alternate function setup for each UART.
-     * Air105 UART pin assignments (from datasheet / board schematic):
+     * Air105 UART pin assignments (from vendor io_map.h):
      *
-     *   UART0: TX=PA1 AF0, RX=PA0 AF0  (download/debug)
+     *   UART0: TX=PA1 AF0, RX=PA0 AF0  (download/debug, CH340)
      *   UART1: TX=PE6 AF0, RX=PE7 AF0  (default "Serial")
      *   UART2: TX=PD0 AF3, RX=PD1 AF3
      *   UART3: TX=PD2 AF3, RX=PD3 AF3
      *
-     * NOTE: These are typical assignments for the LuatOS Air105 dev board.
-     * Boards with different UART routing should override in the variant.
+     * Pin encoding: pin_num = (port * 16) + bit
+     *   Port A = 0, Port B = 1, Port C = 2, Port D = 3, Port E = 4, Port F = 5
      */
     uint8_t tx_pin, rx_pin, af;
 
     if (_uart == UART0) {
-        tx_pin = 1;  /* PA1 */ rx_pin = 0;  /* PA0 */ af = 0;
+        tx_pin = 1;       /* PA1 = 0*16+1 = 1 */
+        rx_pin = 0;       /* PA0 = 0*16+0 = 0 */
+        af = 0;
     } else if (_uart == UART1) {
-        tx_pin = 4*16+6; /* PE6 */ rx_pin = 4*16+7; /* PE7 */ af = 0;
+        tx_pin = 4*16+6;  /* PE6 = 4*16+6 = 70 */
+        rx_pin = 4*16+7;  /* PE7 = 4*16+7 = 71 */
+        af = 0;
     } else if (_uart == UART2) {
-        tx_pin = 3*16+0; /* PD0 */ rx_pin = 3*16+1; /* PD1 */ af = 3;
+        tx_pin = 3*16+0;  /* PD0 = 3*16+0 = 48 */
+        rx_pin = 3*16+1;  /* PD1 = 3*16+1 = 49 */
+        af = 3;
     } else if (_uart == UART3) {
-        tx_pin = 3*16+2; /* PD2 */ rx_pin = 3*16+3; /* PD3 */ af = 3;
+        tx_pin = 3*16+2;  /* PD2 = 3*16+2 = 50 */
+        rx_pin = 3*16+3;  /* PD3 = 3*16+3 = 51 */
+        af = 3;
     } else {
         return;
     }
 
-    /* Set alternate function for TX and RX pins */
-    auto setAF = [](uint8_t pin, uint8_t func) {
-        uint8_t port = pin >> 4;
-        uint8_t bit  = pin & 0x0F;
-        uint32_t shift = bit * 2;
-        GPIO_ALT_GROUP[port] = (GPIO_ALT_GROUP[port] & ~(3UL << shift))
-                               | ((uint32_t)func << shift);
+    /* GPIO_Iomux implementation (matches vendor core_gpio.c) */
+    auto setIomux = [](uint8_t pin, uint8_t func) {
+        uint8_t port = (pin >> 4);            /* port = pin / 16 */
+        uint8_t bit = (pin & 0x0F);           /* bit within port */
+        uint32_t mask = ~(0x03UL << (bit * 2));
+        uint32_t val = (uint32_t)func << (bit * 2);
+        GPIO->ALT[port] = (GPIO->ALT[port] & mask) | val;
     };
 
-    setAF(tx_pin, af);
-    setAF(rx_pin, af);
+    setIomux(tx_pin, af);
+    setIomux(rx_pin, af);
 }
 
 /* ---- C IRQ handlers dispatching to C++ objects ---- */

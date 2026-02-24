@@ -35,10 +35,15 @@ extern "C" {
  *   PD15 = Blue LED
  *   PC3  = Red LED (active low on some boards)
  */
-#define LED_BUILTIN       (3 * 16 + 14)    /* PD14 = pin 62 */
-#define LED_GREEN          LED_BUILTIN
-#define LED_BLUE          (3 * 16 + 15)     /* PD15 = pin 63 */
-#define LED_RED           (2 * 16 + 3)      /* PC3  = pin 35 */
+#define LED_BUILTIN         (3 * 16 + 14)   /* PD14 = pin 62, default LED (green) */
+#define LED_BUILTIN_GREEN   LED_BUILTIN     /* PD14 = pin 62 */
+#define LED_BUILTIN_BLUE    (3 * 16 + 15)   /* PD15 = pin 63 */
+#define LED_BUILTIN_RED     (2 * 16 + 3)    /* PC3  = pin 35 */
+
+/* Legacy aliases */
+#define LED_GREEN           LED_BUILTIN_GREEN
+#define LED_BLUE            LED_BUILTIN_BLUE
+#define LED_RED             LED_BUILTIN_RED
 
 /* ---- Serial pins (UART1 = default "Serial") ---- */
 #define PIN_SERIAL_TX     (4 * 16 + 6)     /* PE6 */
@@ -76,6 +81,23 @@ extern "C" {
 #define A2  (2 * 16 + 3)  /* PC3 — ADC channel 4 (channel 3 not available) */
 #define A3  (2 * 16 + 4)  /* PC4 — ADC channel 5 */
 #define A4  (2 * 16 + 5)  /* PC5 — ADC channel 6 */
+
+/* ---- PWM pins ---- */
+/*
+ * Air105 PWM channel mapping (6 channels via TIMM0):
+ *   - Channel 0: PB0 (PWM0)
+ *   - Channel 1: PB1 (PWM1)
+ *   - Channel 2: PA2 (PWM2)
+ *   - Channel 3: PA3 (PWM3)
+ *   - Channel 4: PC6 (PWM4)
+ *   - Channel 5: PC7 (PWM5)
+ */
+#define PWM0  (1 * 16 + 0)  /* PB0 — PWM channel 0 */
+#define PWM1  (1 * 16 + 1)  /* PB1 — PWM channel 1 */
+#define PWM2  (0 * 16 + 2)  /* PA2 — PWM channel 2 */
+#define PWM3  (0 * 16 + 3)  /* PA3 — PWM channel 3 */
+#define PWM4  (2 * 16 + 6)  /* PC6 — PWM channel 4 */
+#define PWM5  (2 * 16 + 7)  /* PC7 — PWM channel 5 */
 
 /* ---- User button ---- */
 #define USER_BUTTON       (0 * 16 + 10)    /* PA10 — adjust per board */

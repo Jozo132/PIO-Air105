@@ -116,6 +116,9 @@ void detachInterrupt(uint8_t interruptNum);
 #define interrupts()    __enable_irq()
 #define noInterrupts()  __disable_irq()
 
+/* Timer interrupts: Use HardwareTimer class (STM32duino-compatible API) */
+/* See HardwareTimer.h for TIM0-TIM7, setOverflow(), attachInterrupt(), etc. */
+
 /* ---- Random ---- */
 void randomSeed(unsigned long seed);
 long map(long value, long fromLow, long fromHigh, long toLow, long toHigh);
@@ -141,6 +144,7 @@ void yield(void);
 #include "Print.h"
 #include "Stream.h"
 #include "HardwareSerial.h"
+#include "HardwareTimer.h"
 
 /* min/max as templates to avoid macro pitfalls in C++ */
 #undef min

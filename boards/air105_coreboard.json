@@ -2,7 +2,7 @@
   "build": {
     "core": "air105",
     "cpu": "cortex-m4",
-    "extra_flags": "-DAIR105 -DARM_MATH_CM4 -D__FPU_PRESENT=1 -D__FPU_USED=1",
+    "extra_flags": "",
     "f_cpu": "204000000L",
     "mcu": "air105",
     "variant": "air105_devboard"

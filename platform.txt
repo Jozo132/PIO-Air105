@@ -1,0 +1,112 @@
+# =============================================================================
+# PIO-Air105 — platform.txt
+# =============================================================================
+# Arduino IDE build recipes for Air105 (MH1903S) Cortex-M4F MCU.
+#
+# @author J.Vovk <Jozo132@gmail.com>
+# @url    https://github.com/Jozo132/PIO-Air105
+# SPDX-License-Identifier: MIT
+# =============================================================================
+
+name=Air105 (MH1903S) Boards
+version=0.1.0
+
+# =============================================================================
+# Toolchain
+# =============================================================================
+
+# Compiler and tools (uses standard ARM GCC, installed by Arduino IDE)
+compiler.path={runtime.tools.arm-none-eabi-gcc.path}/bin/
+compiler.c.cmd=arm-none-eabi-gcc
+compiler.cpp.cmd=arm-none-eabi-g++
+compiler.ar.cmd=arm-none-eabi-ar
+compiler.c.elf.cmd=arm-none-eabi-gcc
+compiler.objcopy.cmd=arm-none-eabi-objcopy
+compiler.size.cmd=arm-none-eabi-size
+compiler.elf2hex.cmd=arm-none-eabi-objcopy
+
+# =============================================================================
+# Compiler warning flags (selectable via IDE preferences)
+# =============================================================================
+
+compiler.warning_flags=-w
+compiler.warning_flags.none=-w
+compiler.warning_flags.default=
+compiler.warning_flags.more=-Wall
+compiler.warning_flags.all=-Wall -Wextra
+
+# =============================================================================
+# Build flags
+# =============================================================================
+
+compiler.air105.extra_include=-I"{build.system.path}/cmsis"
+compiler.extra_flags=
+
+# --- C flags -----------------------------------------------------------------
+compiler.c.flags=-mcpu={build.mcu} -mthumb {build.fpu} -c -Os {compiler.warning_flags} -std=gnu11 -ffunction-sections -fdata-sections -fno-exceptions -nostdlib --param max-inline-insns-single=500 {compiler.extra_flags} {compiler.air105.extra_include}
+
+# --- C++ flags ---------------------------------------------------------------
+compiler.cpp.flags=-mcpu={build.mcu} -mthumb {build.fpu} -c -Os {compiler.warning_flags} -std=gnu++17 -ffunction-sections -fdata-sections -fno-exceptions -fno-rtti -nostdlib --param max-inline-insns-single=500 {compiler.extra_flags} {compiler.air105.extra_include}
+
+# --- Assembly flags ----------------------------------------------------------
+compiler.S.flags=-mcpu={build.mcu} -mthumb {build.fpu} -c -x assembler-with-cpp {compiler.extra_flags} {compiler.air105.extra_include}
+
+# --- Archive flags -----------------------------------------------------------
+compiler.ar.flags=rcs
+
+# --- Linker flags ------------------------------------------------------------
+compiler.c.elf.flags=-mcpu={build.mcu} -mthumb {build.fpu} -Os -Wl,--gc-sections -Wl,--check-sections --specs=nano.specs --specs=nosys.specs {compiler.extra_flags}
+
+compiler.libraries.ldflags=
+
+# ELF to BIN
+compiler.elf2hex.flags=-O binary
+
+# Size
+compiler.size.flags=-A -d
+
+# =============================================================================
+# Compile patterns
+# =============================================================================
+
+# --- Compile C source --------------------------------------------------------
+recipe.c.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.c.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
+
+# --- Compile C++ source ------------------------------------------------------
+recipe.cpp.o.pattern="{compiler.path}{compiler.cpp.cmd}" {compiler.cpp.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
+
+# --- Compile Assembly source -------------------------------------------------
+recipe.S.o.pattern="{compiler.path}{compiler.c.cmd}" {compiler.S.flags} -DF_CPU={build.f_cpu} -DARDUINO={runtime.ide.version} -DARDUINO_{build.board} {build.extra_flags} {includes} "{source_file}" -o "{object_file}"
+
+# --- Create archive ----------------------------------------------------------
+recipe.ar.pattern="{compiler.path}{compiler.ar.cmd}" {compiler.ar.flags} "{archive_file_path}" "{object_file}"
+
+# --- Link ELF ----------------------------------------------------------------
+recipe.c.combine.pattern="{compiler.path}{compiler.c.elf.cmd}" {compiler.c.elf.flags} "-T{build.system.path}/{build.ldscript}" "-Wl,-Map,{build.path}/{build.project_name}.map" -o "{build.path}/{build.project_name}.elf" "-L{build.path}" -Wl,--start-group {object_files} "{build.path}/{archive_file}" -lm -lc -lgcc -lstdc++ -lnosys -Wl,--end-group
+
+# --- ELF to BIN --------------------------------------------------------------
+recipe.objcopy.bin.pattern="{compiler.path}{compiler.elf2hex.cmd}" {compiler.elf2hex.flags} "{build.path}/{build.project_name}.elf" "{build.path}/{build.project_name}.bin"
+
+# --- Compute size ------------------------------------------------------------
+recipe.size.pattern="{compiler.path}{compiler.size.cmd}" {compiler.size.flags} "{build.path}/{build.project_name}.elf"
+recipe.size.regex=^(?:\.text|\.data|\.rodata)\s+(\d+).*
+recipe.size.regex.data=^(?:\.data|\.bss|\.noinit)\s+(\d+).*
+
+# =============================================================================
+# Upload via Air105 USB bootloader
+# =============================================================================
+
+tools.air105upload.cmd=upload
+tools.air105upload.cmd.windows=upload
+tools.air105upload.path={runtime.platform.path}/tools/uploader
+
+tools.air105upload.upload.params.verbose=-v
+tools.air105upload.upload.params.quiet=
+tools.air105upload.upload.pattern="{runtime.tools.python3.path}/python3" "{path}/upload.py" "{serial.port}" "{build.path}/{build.project_name}.bin" {upload.offset}
+tools.air105upload.upload.pattern.windows="{runtime.tools.python3.path}/python3.exe" "{path}/upload.py" "{serial.port}" "{build.path}/{build.project_name}.bin" {upload.offset}
+
+# =============================================================================
+# Build system path (for linker script and system headers)
+# =============================================================================
+
+build.system.path={runtime.platform.path}/system

@@ -1,0 +1,46 @@
+# =============================================================================
+# PIO-Air105 — boards.txt
+# =============================================================================
+# Arduino IDE board definitions for Air105 (MH1903S) MCU.
+#
+# @author J.Vovk <Jozo132@gmail.com>
+# @url    https://github.com/Jozo132/PIO-Air105
+# SPDX-License-Identifier: MIT
+# =============================================================================
+
+# --- Menu definitions --------------------------------------------------------
+menu.upload_speed=Upload Speed
+
+# =============================================================================
+# Air105 Core Board (Luat CORE-Air105-V1.0)
+# =============================================================================
+
+air105_coreboard.name=Air105 Core Board
+
+# --- Build -------------------------------------------------------------------
+air105_coreboard.build.board=AIR105_COREBOARD
+air105_coreboard.build.core=air105
+air105_coreboard.build.variant=air105_devboard
+air105_coreboard.build.mcu=cortex-m4
+air105_coreboard.build.f_cpu=204000000L
+air105_coreboard.build.fpu=-mfloat-abi=hard -mfpu=fpv4-sp-d16
+air105_coreboard.build.arch=AIR105
+air105_coreboard.build.ldscript=air105_flash.ld
+air105_coreboard.build.extra_flags=-DAIR105 -DARM_MATH_CM4 -D__FPU_PRESENT=1
+
+# --- Upload ------------------------------------------------------------------
+air105_coreboard.upload.tool=air105upload
+air105_coreboard.upload.protocol=air105-dfu
+air105_coreboard.upload.maximum_size=4190208
+air105_coreboard.upload.maximum_data_size=655360
+air105_coreboard.upload.offset=0x1001000
+air105_coreboard.upload.use_1200bps_touch=false
+air105_coreboard.upload.wait_for_upload_port=false
+
+# Upload speed menu
+air105_coreboard.menu.upload_speed.115200=115200
+air105_coreboard.menu.upload_speed.115200.upload.speed=115200
+air105_coreboard.menu.upload_speed.921600=921600
+air105_coreboard.menu.upload_speed.921600.upload.speed=921600
+air105_coreboard.menu.upload_speed.57600=57600
+air105_coreboard.menu.upload_speed.57600.upload.speed=57600

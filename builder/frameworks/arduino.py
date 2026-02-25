@@ -25,15 +25,14 @@ board = env.BoardConfig()
 
 # Platform root directory (where platform.json lives)
 PLATFORM_DIR = platform.get_dir()
-FRAMEWORK_DIR = join(PLATFORM_DIR, "framework")
 
 # Resolve core and variant from board manifest
 CORE_NAME = board.get("build.core", "air105")
 VARIANT_NAME = board.get("build.variant", "air105_devboard")
 
-CORES_DIR = join(FRAMEWORK_DIR, "cores", CORE_NAME)
-VARIANTS_DIR = join(FRAMEWORK_DIR, "variants", VARIANT_NAME)
-SYSTEM_DIR = join(FRAMEWORK_DIR, "system")
+CORES_DIR = join(PLATFORM_DIR, "cores", CORE_NAME)
+VARIANTS_DIR = join(PLATFORM_DIR, "variants", VARIANT_NAME)
+SYSTEM_DIR = join(PLATFORM_DIR, "system")
 CMSIS_DIR = join(SYSTEM_DIR, "cmsis")
 
 # ============================================================================

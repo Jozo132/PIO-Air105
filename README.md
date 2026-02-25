@@ -1,15 +1,15 @@
 # PIO-Air105
 
-**PlatformIO Arduino-compatible support package for the Air105 MCU**
+**PlatformIO + Arduino IDE support package for the Air105 MCU**
 
 Air105 is a 32-bit Arm Cortex-M4F-class microcontroller (MH1903/MH1903S family) in QFN-88 with 4 MB on-chip Flash and 640 KB SRAM, originally designed by the OpenLuat/Luat ecosystem.
 
 ## Project Goals
 
-- **PlatformIO platform** — full board/toolchain integration for Air105
+- **Dual IDE support** — works with both PlatformIO and Arduino IDE
 - **Arduino-compatible C++ framework** — familiar API (`Serial`, `SPI`, `Wire`, `digitalRead`/`Write`, `analogRead`, PWM, etc.)
 - **Direct USB bootloader upload** — no vendor-specific Windows-only flashing tools required
-- **Prebuilt helper tools** — built from scratch where needed for a self-contained workflow
+- **Self-contained** — all build dependencies bundled, no git submodules needed for users
 
 ## Project Status
 
@@ -70,40 +70,54 @@ pio run -t upload    # Upload via USB bootloader
 pio device monitor   # Serial monitor
 ```
 
+### Quick Start (Arduino IDE)
+
+1. Open **File → Preferences → Additional Boards Manager URLs** and add:
+   ```
+   https://raw.githubusercontent.com/Jozo132/PIO-Air105/master/package_air105_index.json
+   ```
+   > **Note:** The Board Manager JSON index is not yet published. For now, install manually:
+   > Clone this repo and add its path via **File → Preferences → Sketchbook location**, or
+   > symlink/copy it into your Arduino `hardware/` folder as `hardware/air105/air105/`.
+
+2. Select **Tools → Board → Air105 Core Board**
+3. Select your COM port under **Tools → Port**
+4. Upload your sketch (the same code from the PlatformIO example above works here too)
+
 ## Repository Structure
 
 ```
 PIO-Air105/
-├── platform.json                  # PlatformIO custom platform manifest
-├── platform.py                    # Platform class
-├── builder/
-│   ├── main.py                    # Build system entry point
+├── platform.json                  # PlatformIO platform manifest
+├── platform.py                    # PlatformIO platform class
+├── platform.txt                   # Arduino IDE build recipes
+├── boards.txt                     # Arduino IDE board definitions
+├── programmers.txt                # Arduino IDE programmer defs (empty)
+├── builder/                       # PlatformIO build scripts
+│   ├── main.py                    #   Toolchain config, targets, upload
 │   └── frameworks/
-│       └── arduino.py             # Arduino framework builder
+│       └── arduino.py             #   Arduino framework source builder
 ├── boards/
-│   └── air105_coreboard.json      # Board definition
-├── framework/
-│   ├── cores/air105/              # Arduino API implementation
-│   ├── variants/air105_devboard/  # Board pin mappings
-│   └── system/                    # Startup, linker script, chip headers
-│       ├── cmsis/                 # CMSIS core headers (Cortex-M4)
-│       ├── air105.h               # Chip register map
-│       ├── air105_flash.ld        # Linker script
-│       ├── startup_air105.s       # Startup assembly
-│       └── system_air105.*        # System init
-├── tools/
-│   └── uploader/                  # USB bootloader upload tool
-├── examples/
-│   └── blinky/                    # Example project
-├── tests/
-│   └── platformio-blinky/         # Development test project
-├── vendor/                        # Upstream references (git submodules)
-│   ├── luatos-soc-air105/         # MIT — Official Air105 SoC SDK
-│   ├── platformio-air105/         # Apache-2.0 — Community PlatformIO platform
-│   ├── air105-uploader/           # Apache-2.0 — Serial ISP uploader reference
-│   └── mhdumper/                  # MIT — ROM API reference
-├── docs/                          # Documentation
-└── deep-research-report.md        # Air105 architecture research
+│   └── air105_coreboard.json      # PlatformIO board definition
+├── cores/air105/                  # Arduino API implementation
+│   ├── Arduino.h                  #   Main include (pulls in all APIs)
+│   ├── HardwareSerial.*           #   UART0–UART3
+│   ├── HardwareTimer.*            #   TIM0–TIM7 (STM32duino-compatible)
+│   ├── SPI.*                      #   SPI (STM32duino-compatible)
+│   ├── Wire.*                     #   I2C (Wire library)
+│   ├── DMA.*                      #   8-channel DMA controller
+│   └── ...                        #   wiring, Print, Stream, etc.
+├── variants/air105_devboard/      # Board-specific pin mappings
+├── system/                        # Low-level system files
+│   ├── cmsis/                     #   CMSIS core headers (Cortex-M4)
+│   ├── air105.h                   #   Chip register map
+│   ├── air105_flash.ld            #   Linker script
+│   ├── startup_air105.s           #   Startup assembly
+│   └── system_air105.*            #   System init (clock, SysTick)
+├── tools/uploader/                # USB bootloader upload tool
+├── examples/blinky/               # Example project
+├── tests/platformio-blinky/       # Development test project
+└── vendor/                        # Upstream references (git submodules)
 ```
 
 ## Vendor Submodules & Licenses

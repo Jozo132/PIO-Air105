@@ -39,7 +39,7 @@ compiler.warning_flags.all=-Wall -Wextra
 # Build flags
 # =============================================================================
 
-compiler.air105.extra_include=-I"{build.system.path}/cmsis"
+compiler.air105.extra_include="-I{build.system.path}" "-I{build.system.path}/cmsis"
 compiler.extra_flags=
 
 # --- C flags -----------------------------------------------------------------

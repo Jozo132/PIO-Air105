@@ -91,22 +91,16 @@ env.Append(LINKFLAGS=["-T", ldscript_path])
 # Framework source files
 # ============================================================================
 
-# System files (startup assembly + system init)
-env.BuildSources(
-    join("$BUILD_DIR", "FrameworkSystem"),
-    SYSTEM_DIR,
-    src_filter=["+<*.c>", "+<*.s>"],
-)
-print("  [System] startup_air105.s, system_air105.c")
-
-# Core files (Arduino API implementation)
+# Core files (Arduino API + system startup/init)
 env.BuildSources(
     join("$BUILD_DIR", "FrameworkArduino"),
     CORES_DIR,
-    src_filter=["+<*.c>", "+<*.cpp>"],
+    src_filter=["+<*.c>", "+<*.cpp>", "+<*.S>"],
 )
-core_sources = glob.glob(join(CORES_DIR, "*.c")) + glob.glob(
-    join(CORES_DIR, "*.cpp")
+core_sources = (
+    glob.glob(join(CORES_DIR, "*.c"))
+    + glob.glob(join(CORES_DIR, "*.cpp"))
+    + glob.glob(join(CORES_DIR, "*.S"))
 )
 for src in sorted(core_sources):
     print("  [Core] %s" % basename(src))

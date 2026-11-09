@@ -35,6 +35,24 @@ VARIANTS_DIR = join(PLATFORM_DIR, "variants", VARIANT_NAME)
 SYSTEM_DIR = join(PLATFORM_DIR, "system")
 CMSIS_DIR = join(SYSTEM_DIR, "cmsis")
 
+# SystemInit selects a fixed PLL/core rate. Other f_cpu values would make
+# compile-time timing assumptions disagree with the runtime clock tree.
+STARTUP_CPU_CLOCK_HZ = 204000000
+f_cpu = str(board.get("build.f_cpu", "")).strip()
+f_cpu_value = f_cpu.rstrip("lL")
+try:
+    f_cpu_hz = int(f_cpu_value, 0)
+except ValueError:
+    env.Exit("Error: invalid build.f_cpu value: %s" % f_cpu)
+
+if f_cpu_hz != STARTUP_CPU_CLOCK_HZ:
+    env.Exit(
+        "Error: AIR105 startup uses a fixed %u Hz CPU clock; build.f_cpu=%s "
+        "is unsupported" % (STARTUP_CPU_CLOCK_HZ, f_cpu)
+    )
+
+env.Append(CPPDEFINES=[("F_CPU", f_cpu_value)])
+
 # ============================================================================
 # Validate paths
 # ============================================================================

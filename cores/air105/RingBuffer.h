@@ -9,52 +9,62 @@
 #define RING_BUFFER_H
 
 #include <stdint.h>
-#include <string.h>
 
 #ifndef SERIAL_RX_BUFFER_SIZE
 #define SERIAL_RX_BUFFER_SIZE 256
 #endif
 
+#ifndef SERIAL_TX_BUFFER_SIZE
+#define SERIAL_TX_BUFFER_SIZE 256
+#endif
+
+#if SERIAL_RX_BUFFER_SIZE < 2 || SERIAL_RX_BUFFER_SIZE > 65535
+#error "SERIAL_RX_BUFFER_SIZE must be between 2 and 65535"
+#endif
+
+#if SERIAL_TX_BUFFER_SIZE < 2 || SERIAL_TX_BUFFER_SIZE > 65535
+#error "SERIAL_TX_BUFFER_SIZE must be between 2 and 65535"
+#endif
+
+template <uint16_t BufferSize>
 class RingBuffer {
 public:
     RingBuffer() : _head(0), _tail(0) {}
 
-    /** Store one byte (called from ISR). Returns false if full. */
     bool store(uint8_t c) {
-        uint16_t next = (uint16_t)((_head + 1) % SERIAL_RX_BUFFER_SIZE);
-        if (next == _tail) return false; // full
+        uint16_t next = (uint16_t)((_head + 1U) % BufferSize);
+        if (next == _tail) return false;
         _buf[_head] = c;
         _head = next;
         return true;
     }
 
-    /** Read one byte. Returns -1 if empty. */
     int read() {
         if (_head == _tail) return -1;
         uint8_t c = _buf[_tail];
-        _tail = (uint16_t)((_tail + 1) % SERIAL_RX_BUFFER_SIZE);
+        _tail = (uint16_t)((_tail + 1U) % BufferSize);
         return c;
     }
 
-    /** Peek at next byte without consuming. Returns -1 if empty. */
     int peek() const {
         if (_head == _tail) return -1;
         return _buf[_tail];
     }
 
-    /** Number of bytes available */
     int available() const {
-        return (int)(((unsigned int)SERIAL_RX_BUFFER_SIZE + _head - _tail)
-                     % SERIAL_RX_BUFFER_SIZE);
+        return (int)(((uint32_t)BufferSize + _head - _tail) % BufferSize);
     }
 
-    /** Flush (discard) all data */
+    uint16_t availableForStore() const {
+        return (uint16_t)(BufferSize - 1U - (uint16_t)available());
+    }
+
     void clear() { _head = _tail = 0; }
 
 private:
     volatile uint16_t _head;
     volatile uint16_t _tail;
-    uint8_t _buf[SERIAL_RX_BUFFER_SIZE];
+    uint8_t _buf[BufferSize];
 };
 
 #endif /* RING_BUFFER_H */

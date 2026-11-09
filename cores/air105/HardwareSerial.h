@@ -29,9 +29,12 @@ public:
     void end();
 
     virtual int available() override;
+    int availableForWrite();
     virtual int peek() override;
     virtual int read() override;
     virtual void flush() override;
+
+    uint32_t getRxOverflowCount() const { return _rxOverflowCount; }
 
     virtual size_t write(uint8_t c) override;
     virtual size_t write(const uint8_t *buffer, size_t size) override;
@@ -45,10 +48,13 @@ public:
 private:
     UART_TypeDef *_uart;
     IRQn_Type     _irqn;
-    RingBuffer    _rxBuf;
+    RingBuffer<SERIAL_RX_BUFFER_SIZE> _rxBuf;
+    RingBuffer<SERIAL_TX_BUFFER_SIZE> _txBuf;
+    volatile uint32_t _rxOverflowCount;
     bool          _begun;
 
     void _configurePins();
+    void _tx_isr_handler();
 };
 
 /* ---- Global Serial instances ---- */

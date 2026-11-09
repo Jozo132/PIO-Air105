@@ -28,7 +28,7 @@ HardwareSerial Serial3(UART3, UART3_IRQn);
 
 /* ---- Constructor ---- */
 HardwareSerial::HardwareSerial(UART_TypeDef *uart, IRQn_Type irqn)
-    : _uart(uart), _irqn(irqn), _begun(false) {}
+    : _uart(uart), _irqn(irqn), _rxOverflowCount(0), _begun(false) {}
 
 /* ---- begin() ---- */
 void HardwareSerial::begin(unsigned long baud)
@@ -38,6 +38,9 @@ void HardwareSerial::begin(unsigned long baud)
 
 void HardwareSerial::begin(unsigned long baud, uint8_t config)
 {
+    _rxBuf.clear();
+    _txBuf.clear();
+    _rxOverflowCount = 0;
     _begun = true;
 
     /* Determine UART ID for peripheral reset (UART0=0, UART1=1, etc.) */
@@ -82,10 +85,12 @@ void HardwareSerial::begin(unsigned long baud, uint8_t config)
 
 void HardwareSerial::end()
 {
+    flush();
     NVIC_DisableIRQ(_irqn);
     _uart->OFFSET_4.IER = 0;
     _begun = false;
     _rxBuf.clear();
+    _txBuf.clear();
 }
 
 /* ---- Stream/Print interface ---- */
@@ -93,6 +98,11 @@ void HardwareSerial::end()
 int HardwareSerial::available()
 {
     return _rxBuf.available();
+}
+
+int HardwareSerial::availableForWrite()
+{
+    return _begun ? _txBuf.availableForStore() : 0;
 }
 
 int HardwareSerial::peek()
@@ -107,29 +117,80 @@ int HardwareSerial::read()
 
 void HardwareSerial::flush()
 {
-    /* Wait until transmit FIFO and shift register are empty */
-    while (!(_uart->LSR & UART_LSR_TEMT)) {}
+    if (!_begun) return;
+
+    bool can_yield = __get_PRIMASK() == 0U && __get_IPSR() == 0U;
+    while (_txBuf.available() != 0) {
+        if (can_yield) {
+            yield();
+        } else {
+            uint32_t primask = __get_PRIMASK();
+            __disable_irq();
+            _tx_isr_handler();
+            __set_PRIMASK(primask);
+            while (_txBuf.available() != 0
+                   && !(_uart->USR & UART_USR_TFNF)) {}
+        }
+    }
+
+    while (!(_uart->LSR & UART_LSR_TEMT)) {
+        if (can_yield) yield();
+    }
 }
 
 size_t HardwareSerial::write(uint8_t c)
 {
     if (!_begun) return 0;
 
-    /* Wait for TX FIFO not full */
-    while (!(_uart->USR & UART_USR_TFNF)) {}
-    _uart->OFFSET_0.THR = c;
-    return 1;
+    bool must_poll = __get_PRIMASK() != 0U || __get_IPSR() != 0U;
+    while (true) {
+        uint32_t primask = __get_PRIMASK();
+        __disable_irq();
+        bool queued = _txBuf.store(c);
+        if (queued) {
+            _uart->OFFSET_4.IER |= UART_IER_ETBEI;
+        }
+        __set_PRIMASK(primask);
+
+        if (queued) return 1;
+
+        if (must_poll) {
+            primask = __get_PRIMASK();
+            __disable_irq();
+            _tx_isr_handler();
+            __set_PRIMASK(primask);
+            while (_txBuf.availableForStore() == 0
+                   && !(_uart->USR & UART_USR_TFNF)) {}
+        } else {
+            yield();
+        }
+    }
 }
 
 size_t HardwareSerial::write(const uint8_t *buffer, size_t size)
 {
     if (!_begun) return 0;
     size_t n = 0;
-    while (n < size) {
-        while (!(_uart->USR & UART_USR_TFNF)) {}
-        _uart->OFFSET_0.THR = buffer[n++];
+    while (n < size && write(buffer[n]) != 0) {
+        ++n;
     }
     return n;
+}
+
+void HardwareSerial::_tx_isr_handler()
+{
+    while (_uart->USR & UART_USR_TFNF) {
+        int c = _txBuf.read();
+        if (c < 0) break;
+        _uart->OFFSET_0.THR = (uint8_t)c;
+    }
+
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    if (_txBuf.available() == 0) {
+        _uart->OFFSET_4.IER &= ~UART_IER_ETBEI;
+    }
+    __set_PRIMASK(primask);
 }
 
 /* ---- RX interrupt handler (called from UART IRQ) ---- */
@@ -154,14 +215,17 @@ void HardwareSerial::_rx_isr_handler()
             (void)_uart->MSR;
             break;
             
-        case 1:  /* TX holding register empty - ignore, we poll for TX */
+        case 1:  /* TX holding register empty */
+            _tx_isr_handler();
             break;
             
         case 2:  /* Received data available */
         case 6:  /* Character timeout */
             while (_uart->USR & UART_USR_RFNE) {
                 uint8_t c = (uint8_t)_uart->OFFSET_0.RBR;
-                _rxBuf.store(c);
+                if (!_rxBuf.store(c)) {
+                    ++_rxOverflowCount;
+                }
             }
             break;
             

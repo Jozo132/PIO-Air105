@@ -8,7 +8,7 @@ Air105 is a 32-bit Arm Cortex-M4F-class microcontroller (MH1903/MH1903S family) 
 
 - **Dual IDE support** — works with both PlatformIO and Arduino IDE
 - **Arduino-compatible C++ framework** — familiar API (`Serial`, `SPI`, `Wire`, `digitalRead`/`Write`, `analogRead`, PWM, etc.)
-- **Direct USB bootloader upload** — no vendor-specific Windows-only flashing tools required
+- **Cross-platform USB bootloader upload** — native serial backends for Windows and POSIX hosts
 - **Self-contained** — all build dependencies bundled, no git submodules needed for users
 
 ## Project Status
@@ -26,6 +26,35 @@ Air105 is a 32-bit Arm Cortex-M4F-class microcontroller (MH1903/MH1903S family) 
 - **GPIO Interrupts** — `attachInterrupt` / `detachInterrupt`
 - **DMA** — 8-channel DMA with M2M, M2P, P2M transfers
 - **Print / Stream** — Arduino `Print` and `Stream` base classes
+
+## Version 0.2.0
+
+### Timing and Clock Configuration
+
+- The startup CPU/PLL clock is 204 MHz; PlatformIO sets `F_CPU` from the board configuration and rejects unsupported clock overrides.
+- `millis()` and `micros()` use SysTick, including pending-tick handling at the millisecond boundary.
+- `delay()` and `delayMicroseconds()` remain synchronous. They call `yield()` during normal thread-context waits longer than 10 microseconds; short microsecond waits use cycle polling. Delays in interrupt or interrupt-masked context also use cycle polling.
+- SysTick can retain only one pending tick. Interrupts disabled for more than one millisecond can therefore cause `millis()` and `micros()` to lose elapsed whole ticks.
+
+### Serial Buffers
+
+- Each UART has separate 256-byte RX and TX ring buffers by default. One slot is reserved to distinguish full from empty, leaving 255 bytes usable per buffer.
+- TX `write()` waits for ring space; `flush()` waits for queued and hardware transmission to finish. `availableForWrite()` reports free TX-ring capacity.
+- RX cannot wait in its interrupt handler. If the RX ring fills, new bytes are discarded; `getRxOverflowCount()` reports the number discarded.
+- Buffer sizes can be changed at compile time:
+
+```ini
+build_flags =
+    -DSERIAL_RX_BUFFER_SIZE=512
+    -DSERIAL_TX_BUFFER_SIZE=1024
+```
+
+### Native Uploader
+
+- The active uploader uses Python’s standard library and native Windows or POSIX serial APIs; it does not require PySerial, Crypto, or `scpukit` at runtime.
+- Unsigned firmware uploads are supported. RSA-signed secure-boot uploads are not supported by the native uploader.
+
+The serial stress test transfers 8 KiB in each direction and checks for data mismatches and RX overflow. Host ring-buffer tests cover default and overridden sizes; see `tests/serial/` and `tests/timing/`.
 
 ## Getting Started
 
@@ -117,6 +146,8 @@ PIO-Air105/
 ├── tools/uploader/                # USB bootloader upload tool
 ├── examples/blinky/               # Example project
 ├── tests/platformio-blinky/       # Development test project
+├── tests/serial/                  # Serial ring-buffer and high-volume tests
+├── tests/timing/                  # Timing arithmetic and hardware tests
 └── vendor/                        # Upstream references (git submodules)
 ```
 

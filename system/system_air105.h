@@ -9,13 +9,15 @@
 #define SYSTEM_AIR105_H
 
 #include <stdint.h>
+#include "clock_config.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* SystemCoreClock = PLL frequency (e.g. 204 MHz).
- * HCLK = SystemCoreClock / 2,  PCLK = HCLK / 2.
+/* Runtime PLL/core rate, read from FREQ_SEL by SystemCoreClockUpdate().
+ * At the startup configuration: CPU/PLL=204 MHz, HCLK=102 MHz, PCLK=51 MHz.
+ * This runtime variable is distinct from the compile-time F_CPU macro.
  */
 extern uint32_t SystemCoreClock;
 

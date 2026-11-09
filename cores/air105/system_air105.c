@@ -7,11 +7,11 @@
  * Provides SystemInit(), SystemCoreClockUpdate(), and the SysTick handler
  * used by the Arduino timing functions (millis/micros).
  *
- * Clock model (matches vendor luatos-soc-air105 convention):
- *   SystemCoreClock = PLL output frequency (NOT HCLK).
- *   HCLK = PLL / 2   (HCLK_DIV_1_2)
- *   PCLK = HCLK / 2  (PCLK_DIV_1_2, default)
- *   SysTick runs at HCLK = SystemCoreClock / 2.
+ * Clock model (matches the vendor luatos-soc-air105 convention):
+ *   SystemCoreClock = CPU/PLL output frequency = 204 MHz.
+ *   HCLK = PLL / 2 = 102 MHz (HCLK_DIV_1_2).
+ *   PCLK = HCLK / 2 = 51 MHz (PCLK_DIV_1_2).
+ *   SysTick uses the processor clock, so its input is SystemCoreClock.
  *
  * All vendor-compatible peripheral divisors (UART, SPI, I2C, Timer)
  * use SystemCoreClock with explicit right-shifts to derive the actual
@@ -35,9 +35,10 @@ uint32_t SystemCoreClock;
 extern const uint32_t __isr_start_address;
 
 /**
- * @brief Update SystemCoreClock from hardware FREQ_SEL register
+ * @brief Update the runtime CPU/PLL rate from hardware FREQ_SEL
  *
- * SystemCoreClock = PLL frequency = HSE_VALUE * (XTAL + 1)
+ * The AIR105 vendor convention reports SystemCoreClock as the PLL/core
+ * frequency; the HCLK and PCLK dividers only describe the bus clocks.
  */
 void SystemCoreClockUpdate(void)
 {
@@ -114,11 +115,11 @@ void SysTick_Handler(void)
 /**
  * @brief Configure SysTick for 1 ms interrupts
  *
- * SysTick runs at processor clock (FCLK = PLL frequency on Cortex-M4).
- * The HCLK divider only affects the AHB bus, not the core clock.
+ * SysTick runs at the processor clock (the PLL/core rate). The HCLK
+ * divider does not change its clock source.
  * Called from init() in the Arduino core before setup().
  */
 void SysTick_Init(void)
 {
-    SysTick_Config(SystemCoreClock / 1000);
+    (void)SysTick_Config(SystemCoreClock / 1000UL);
 }

@@ -65,6 +65,24 @@ Third-party Arduino libraries (Adafruit, SparkFun, U8g2, FastLED, etc.) that rel
 | **CMSIS** | C/ASM | Arm standard headers, intrinsics, SysTick, NVIC |
 | **Startup/Linker** | ASM/LD | Vector table, clock init, memory layout |
 
+The current AIR105 startup configuration fixes the CPU/PLL rate at 204 MHz,
+with HCLK at 102 MHz and PCLK at 51 MHz. PlatformIO defines `F_CPU` from the
+board manifest and rejects a different `build.f_cpu` until startup and
+peripheral clock calculations support configurable rates. `SystemCoreClock`
+is a runtime PLL/core-rate report, not a replacement for compile-time `F_CPU`.
+
+`millis()` and `micros()` use a 1 ms SysTick interrupt. If interrupts are
+disabled for more than one SysTick period, hardware retains only a pending
+interrupt bit; elapsed whole milliseconds cannot be reconstructed, so the
+reported time loses ticks. `delay()` and `delayMicroseconds()` remain
+synchronous calls, but call `yield()` while waiting in normal thread context so
+cooperative background work can run. `delayMicroseconds()` uses cycle polling
+for waits of 10 microseconds or less. Hardware timer callbacks continue through
+interrupts while interrupts are enabled. In ISR or interrupt-masked context,
+delays poll SysTick cycles without yielding; other timer callbacks cannot run
+until interrupts are restored. Polling can undercount if execution is prevented
+from sampling the counter for an entire SysTick period.
+
 ### 2.2 — Why This Matches STM32duino
 
 STM32duino uses the exact same layering: `Arduino API → STM32 HAL (from ST Cube) → CMSIS → Startup`. The difference is that ST publishes official HAL/LL drivers whereas we extract ours from the MIT-licensed LuatOS SDK. The Arduino API layer we write from scratch.
@@ -302,12 +320,10 @@ const PinMap PinMap_ADC[] = {
 
 | Arduino Object | Air105 Peripheral | Notes |
 |---------------|-------------------|-------|
-| `Serial` | **UART1** (`0x4001_7000`) | Primary application serial. **NOT UART0.** |
-| `Serial1` | **UART2** (`0x4004_4000`) | Second application serial |
-| `Serial2` | **UART3** (`0x4004_5000`) | Third application serial |
-| *(reserved)* | **UART0** (`0x4001_6000`) | Bootloader/download only — not exposed as Arduino Serial |
-
-> **UART0 is permanently reserved** for the bootloader download and logging interface. Exposing it as an Arduino Serial would conflict with the flashing mechanism and confuse users. This matches how STM32duino reserves certain UARTs on some boards.
+| `Serial` | **UART0** (`0x4001_6000`) | Primary application serial, connected to the CH340 |
+| `Serial1` | **UART1** | Second application serial |
+| `Serial2` | **UART2** | Third application serial |
+| `Serial3` | **UART3** | Fourth application serial |
 
 ```cpp
 // HardwareSerial.h
@@ -317,16 +333,14 @@ public:
   void begin(unsigned long baud, uint16_t config); // SERIAL_8N1, etc.
   void end();
   int available();
+  int availableForWrite();
   int read();
   int peek();
   size_t write(uint8_t byte);
   size_t write(const uint8_t *buf, size_t size);
   void flush();
+  uint32_t getRxOverflowCount() const;
   operator bool();
-
-  // Air105 extensions
-  void setRxBufferSize(size_t size);       // Override default 256-byte ring buffer
-  void enableDMA(bool tx = true, bool rx = true);  // Enable DMA transfers
 };
 
 extern HardwareSerial Serial;   // UART1
@@ -335,8 +349,11 @@ extern HardwareSerial Serial2;  // UART3
 ```
 
 **Implementation notes:**
-- All UARTs support DMA (TX/RX channels in DMA handshaking map)
-- Default: interrupt-driven with 256-byte ring buffer (configurable)
+- RX and TX use separate interrupt-driven ring buffers, each defaulting to 256 bytes (255 bytes usable because one slot distinguishes full from empty)
+- Set `SERIAL_RX_BUFFER_SIZE` and `SERIAL_TX_BUFFER_SIZE` with compiler defines to override capacities; both sizes must be from 2 through 65535
+- TX `write()` waits for ring space and `flush()` waits for the queued and hardware bytes to finish
+- RX cannot block inside its interrupt handler; new bytes are discarded when its ring is full, and `getRxOverflowCount()` reports the number discarded
+- Example PlatformIO override: `build_flags = -DSERIAL_RX_BUFFER_SIZE=512 -DSERIAL_TX_BUFFER_SIZE=512`
 - High-speed baud rates supported (LuatOS uses 1.5 Mbaud for flashing)
 - Standard configs: `SERIAL_8N1`, `SERIAL_8E1`, `SERIAL_8O1`, `SERIAL_8N2`, etc.
 
@@ -453,13 +470,13 @@ extern TwoWire Wire;   // I2C0
 | Arduino API | Air105 Implementation |
 |------------|----------------------|
 | `millis()` | SysTick-based 32-bit millisecond counter (wraps at ~49.7 days) |
-| `micros()` | SysTick cycle counter with division (or DWT CYCCNT for sub-µs) |
-| `delay(ms)` | Busy-wait using `millis()` with `yield()` calls |
-| `delayMicroseconds(us)` | DWT CYCCNT-based busy-wait (cycle-accurate) |
+| `micros()` | SysTick phase and millisecond counter with integer scaling |
+| `delay(ms)` | Synchronous elapsed-time wait with `yield()` calls |
+| `delayMicroseconds(us)` | Synchronous elapsed-time wait with `yield()` in thread context; cycle polling in ISR/masked context |
 
 **Implementation notes:**
 - SysTick configured for 1 ms tick at `SystemCoreClock`
-- `delay()` calls `yield()` in its spin loop — this enables cooperative tasking and `serialEvent()` processing
+- `delay()` and longer `delayMicroseconds()` calls yield in thread context; timer callbacks run as interrupts when enabled
 - `micros()` uses SysTick current value + overflow count for <1 µs precision at 204 MHz
 
 ### 5.10 — External Interrupts
